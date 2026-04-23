@@ -33,10 +33,10 @@ export default function Navigation() {
             href="/dashboard"
             className="flex items-center gap-3 smooth-hover"
           >
-            <div className="p-2 bg-primary rounded-full smooth-transition hover:scale-105 active:scale-95">
-              <Wallet className="w-5 h-5 text-primary-foreground" />
+            <div className="w-[42px] h-[42px] rounded-full overflow-hidden smooth-transition hover:scale-105 active:scale-95 border-2 border-primary/20 bg-white shadow-sm flex items-center justify-center">
+              <img src="/logo.png" alt="PayNexus Logo" className="w-full h-full object-cover" />
             </div>
-            <span className="font-bold text-[18px] text-foreground tracking-tight">
+            <span className="font-bold text-[20px] text-foreground tracking-tight hidden sm:block dropdown-drop-text">
               PayNexus
             </span>
           </Link>
