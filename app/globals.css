@@ -1,0 +1,184 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --background: #ffffff;
+  --foreground: #000000;
+  --card: #f2f2f2;
+  --card-foreground: #000000;
+  --popover: #ffffff;
+  --popover-foreground: #000000;
+  --primary: #1ed760;
+  --primary-foreground: #000000;
+  --secondary: #e5e5e5;
+  --secondary-foreground: #000000;
+  --muted: #e5e5e5;
+  --muted-foreground: #535353;
+  --accent: #e5e5e5;
+  --accent-foreground: #000000;
+  --destructive: #e22134;
+  --destructive-foreground: #ffffff;
+  --border: #d4d4d4;
+  --input: #e5e5e5;
+  --ring: #1ed760;
+  --radius: 9999px;
+  
+  --sidebar-background: #ffffff;
+  --sidebar-foreground: #535353;
+  --sidebar-primary: #1ed760;
+  --sidebar-primary-foreground: #000000;
+  --sidebar-accent: #e5e5e5;
+  --sidebar-accent-foreground: #000000;
+  --sidebar-border: #d4d4d4;
+  --sidebar-ring: #1ed760;
+}
+
+.dark {
+  --background: #121212;
+  --foreground: #ffffff;
+  --card: #181818;
+  --card-foreground: #ffffff;
+  --popover: #1f1f1f;
+  --popover-foreground: #ffffff;
+  --primary: #1ed760;
+  --primary-foreground: #000000;
+  --secondary: #1f1f1f;
+  --secondary-foreground: #ffffff;
+  --muted: #252525;
+  --muted-foreground: #b3b3b3;
+  --accent: #252525;
+  --accent-foreground: #ffffff;
+  --destructive: #f3727f;
+  --destructive-foreground: #ffffff;
+  --border: #4d4d4d;
+  --input: #1f1f1f;
+  --ring: #1ed760;
+  
+  --sidebar-background: #121212;
+  --sidebar-foreground: #b3b3b3;
+  --sidebar-primary: #1ed760;
+  --sidebar-primary-foreground: #000000;
+  --sidebar-accent: #1f1f1f;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #4d4d4d;
+  --sidebar-ring: #1ed760;
+}
+
+@theme inline {
+  --font-sans: 'Geist', 'Geist Fallback';
+  --font-mono: 'Geist Mono', 'Geist Mono Fallback';
+  
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 9999px; /* full pill for buttons */
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+    outline-color: color-mix(in oklab, var(--ring) 50%, transparent);
+  }
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    /* Improve font rendering */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+@layer utilities {
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Smooth transitions */
+  .smooth-transition {
+    transition-property: all;
+    transition-duration: 250ms;
+    transition-timing-function: cubic-bezier(0.33, 1, 0.68, 1);
+  }
+
+  .smooth-hover {
+    transition-property: all;
+    transition-duration: 250ms;
+    transition-timing-function: cubic-bezier(0.33, 1, 0.68, 1);
+  }
+  .smooth-hover:hover {
+    opacity: 0.9;
+  }
+
+  .card-minimal {
+    background-color: var(--card);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    transition-property: all;
+    transition-duration: 250ms;
+    transition-timing-function: cubic-bezier(0.33, 1, 0.68, 1);
+  }
+  .card-minimal:hover {
+    background-color: var(--accent);
+    box-shadow: rgba(0,0,0,0.1) 0px 8px 8px;
+  }
+  .dark .card-minimal:hover {
+    box-shadow: rgba(0,0,0,0.3) 0px 8px 8px;
+  }
+
+  .btn-smooth {
+    border-radius: 9999px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    font-weight: 700;
+    transition-property: transform, background-color, color, box-shadow;
+    transition-duration: 200ms;
+    transition-timing-function: cubic-bezier(0.33, 1, 0.68, 1);
+  }
+  .btn-smooth:hover {
+    transform: scale(1.04);
+  }
+  .btn-smooth:active {
+    transform: scale(0.96);
+  }
+
+  .btn-circle {
+    border-radius: 50%;
+    transition-property: all;
+    transition-duration: 200ms;
+    transition-timing-function: cubic-bezier(0.33, 1, 0.68, 1);
+  }
+  .btn-circle:hover {
+    transform: scale(1.04);
+  }
+  .btn-circle:active {
+    transform: scale(0.96);
+  }
+}
+
+
