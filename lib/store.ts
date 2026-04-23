@@ -34,6 +34,7 @@ interface AppState {
   // Transactions
   transactions: Transaction[];
   fetchTransactions: () => Promise<void>;
+  settleTransaction: (transactionId: string) => Promise<void>;
 }
 
 // Mock data storage
@@ -277,18 +278,50 @@ export const useAppStore = create<AppState>((set, get) => ({
             from_user_id: member.user_id,
             to_user_id: payment.initiator_id,
             amount: payment.amount_per_member,
-            status: 'completed',
+            status: 'pending',
             created_at: new Date().toISOString(),
           };
           mockTransactions.push(transaction);
         }
       });
+      await get().fetchTransactions();
     }
   },
 
   // Transactions
   transactions: [],
   fetchTransactions: async () => {
-    set({ transactions: mockTransactions });
+    const { currentUser } = get();
+    if (currentUser) {
+      const userTxns = mockTransactions.filter(
+        (t) =>
+          t.from_user_id === currentUser.id ||
+          t.to_user_id === currentUser.id ||
+          t.from_user_id === currentUser.email ||
+          t.to_user_id === currentUser.email
+      );
+      set({ transactions: userTxns.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()) });
+    }
+  },
+
+  settleTransaction: async (transactionId: string) => {
+    const { currentUser } = get();
+    if (!currentUser) throw new Error('Not authenticated');
+
+    const transaction = mockTransactions.find((t) => t.id === transactionId);
+    if (transaction && transaction.status === 'pending') {
+      transaction.status = 'completed';
+      
+      // Deduct from wallet if the current user is the one paying
+      if (transaction.from_user_id === currentUser.id || transaction.from_user_id === currentUser.email) {
+        get().deductFromWallet(transaction.amount);
+      } else if (transaction.to_user_id === currentUser.id || transaction.to_user_id === currentUser.email) {
+        // If current user is the initiator and somehow marking it paid for the other person
+        // we add to wallet since they received it. Actually they always receive it upon settlement.
+        get().addToWallet(transaction.amount);
+      }
+      
+      await get().fetchTransactions();
+    }
   },
 }));

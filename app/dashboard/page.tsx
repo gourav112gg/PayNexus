@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAppStore } from '@/lib/store';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -8,9 +8,13 @@ import { Input } from '@/components/ui/input';
 import { ArrowUpRight, ArrowDownLeft, Plus, TrendingUp } from 'lucide-react';
 
 export default function WalletPage() {
-  const { currentUser, wallet_balance, addToWallet } = useAppStore();
+  const { currentUser, wallet_balance, addToWallet, transactions, fetchTransactions, settleTransaction } = useAppStore();
   const [showAddMoney, setShowAddMoney] = useState(false);
   const [amount, setAmount] = useState('');
+
+  useEffect(() => {
+    fetchTransactions();
+  }, [fetchTransactions]);
 
   const handleAddMoney = () => {
     if (amount && parseFloat(amount) > 0) {
@@ -20,32 +24,7 @@ export default function WalletPage() {
     }
   };
 
-  const mockTransactions = [
-    {
-      id: '1',
-      type: 'received',
-      name: 'Group Payment - Friends Dinner',
-      amount: 500,
-      date: 'Today',
-      icon: ArrowDownLeft,
-    },
-    {
-      id: '2',
-      type: 'sent',
-      name: 'Split Payment - Movie',
-      amount: 300,
-      date: 'Yesterday',
-      icon: ArrowUpRight,
-    },
-    {
-      id: '3',
-      type: 'received',
-      name: 'Group Refund',
-      amount: 150,
-      date: '2 days ago',
-      icon: ArrowDownLeft,
-    },
-  ];
+
 
   return (
     <div className="max-w-5xl mx-auto space-y-10 pb-12">
@@ -135,43 +114,63 @@ export default function WalletPage() {
         </Card>
       )}
 
-      {/* Transactions */}
+      {/* Transactions & Debts */}
       <div>
-        <h2 className="text-[20px] font-bold text-foreground mb-6 tracking-tight">Recent Activity</h2>
+        <h2 className="text-[20px] font-bold text-foreground mb-6 tracking-tight">Recent Activity & Debts</h2>
         <div className="space-y-3">
-          {mockTransactions.length > 0 ? (
-            mockTransactions.map((txn) => {
-              const Icon = txn.icon;
-              const isReceived = txn.type === 'received';
+          {transactions.length > 0 ? (
+            transactions.map((txn) => {
+              const isReceived = txn.to_user_id === currentUser?.id || txn.to_user_id === currentUser?.email;
+              const isPending = txn.status === 'pending';
+              const Icon = isReceived ? ArrowDownLeft : ArrowUpRight;
+              
               return (
                 <Card
                   key={txn.id}
-                  className="p-5 flex items-center justify-between hover:bg-accent group shadow-none"
+                  className="p-5 flex flex-col sm:flex-row sm:items-center justify-between hover:bg-accent group shadow-none gap-4"
                 >
                   <div className="flex items-center gap-5">
                     <div
-                      className={`p-3 rounded-full smooth-transition bg-secondary text-secondary-foreground group-hover:bg-foreground/10`}
+                      className={`p-3 rounded-full smooth-transition ${isPending ? 'bg-orange-500/10 text-orange-500 group-hover:bg-orange-500/20' : 'bg-secondary text-secondary-foreground group-hover:bg-foreground/10'}`}
                     >
                       <Icon className="w-5 h-5" />
                     </div>
                     <div>
-                      <p className="text-[16px] font-bold text-foreground">{txn.name}</p>
-                      <p className="text-[14px] text-muted-foreground mt-0.5">{txn.date}</p>
+                      <p className="text-[16px] font-bold text-foreground">
+                         {isReceived ? 'From' : 'To'} {isReceived ? txn.from_user_id : txn.to_user_id}
+                      </p>
+                      <p className="text-[14px] text-muted-foreground mt-0.5">
+                        {new Date(txn.created_at).toLocaleDateString()} {isPending && '• Pending Debt'}
+                      </p>
                     </div>
                   </div>
-                  <p
-                    className={`text-[16px] font-bold tracking-wide ${
-                      isReceived ? 'text-primary' : 'text-foreground'
-                    }`}
-                  >
-                    {isReceived ? '+' : '-'}₹{txn.amount}
-                  </p>
+                  <div className="flex items-center justify-between sm:justify-end gap-5">
+                    <p
+                      className={`text-[16px] font-bold tracking-wide ${
+                        isPending && isReceived ? 'text-orange-500' : 
+                        isPending && !isReceived ? 'text-red-500' :
+                        isReceived ? 'text-primary' : 'text-foreground'
+                      }`}
+                    >
+                      {isReceived ? '+' : '-'}₹{txn.amount.toFixed(2)}
+                    </p>
+                    {isPending && !isReceived && (
+                      <Button onClick={() => settleTransaction(txn.id)} size="sm">
+                         Settle Up
+                      </Button>
+                    )}
+                    {isPending && isReceived && (
+                      <Button variant="outline" size="sm" onClick={() => settleTransaction(txn.id)}>
+                         Mark Paid
+                      </Button>
+                    )}
+                  </div>
                 </Card>
               );
             })
           ) : (
             <Card className="p-10 text-center bg-transparent border border-dashed border-border shadow-none hover:bg-transparent">
-              <p className="text-[16px] font-medium text-muted-foreground">No transactions yet</p>
+              <p className="text-[16px] font-medium text-muted-foreground">No transactions or debts yet</p>
             </Card>
           )}
         </div>
