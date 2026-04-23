@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { User, Group, GroupMember, Payment, Transaction } from './types';
+import { minCashFlow } from './utils';
 
 interface AppState {
   // Auth
@@ -293,14 +294,58 @@ export const useAppStore = create<AppState>((set, get) => ({
   fetchTransactions: async () => {
     const { currentUser } = get();
     if (currentUser) {
-      const userTxns = mockTransactions.filter(
+      const balances: Record<string, number> = {};
+
+      mockTransactions.forEach((t) => {
+        // Pending transaction (an expense split): from_user owes to_user
+        if (t.status === 'pending') {
+          balances[t.to_user_id] = (balances[t.to_user_id] || 0) + t.amount;
+          balances[t.from_user_id] = (balances[t.from_user_id] || 0) - t.amount;
+        }
+        // Completed settlement: from_user paid to_user, reducing the debt
+        if (t.status === 'completed' && t.payment_id === 'settlement') {
+          balances[t.from_user_id] = (balances[t.from_user_id] || 0) + t.amount;
+          balances[t.to_user_id] = (balances[t.to_user_id] || 0) - t.amount;
+        }
+      });
+
+      // Run Minimum Cash Flow algorithm to optimize debts globally
+      const optimizedDebts = minCashFlow(balances);
+
+      // Map optimized debts back to UI transactions for the current user
+      const userTxns = optimizedDebts
+        .filter(
+          (d) =>
+            d.from === currentUser.id ||
+            d.to === currentUser.id ||
+            d.from === currentUser.email ||
+            d.to === currentUser.email
+        )
+        .map((d, idx) => ({
+          id: `opt_txn_${idx}_${d.from}_${d.to}`,
+          payment_id: 'optimized',
+          from_user_id: d.from,
+          to_user_id: d.to,
+          amount: d.amount,
+          status: 'pending' as const,
+          created_at: new Date().toISOString(),
+        }));
+
+      // Append historical completed transactions (both settlements and old payments)
+      const completedTxns = mockTransactions.filter(
         (t) =>
-          t.from_user_id === currentUser.id ||
-          t.to_user_id === currentUser.id ||
-          t.from_user_id === currentUser.email ||
-          t.to_user_id === currentUser.email
+          t.status === 'completed' &&
+          (t.from_user_id === currentUser.id ||
+            t.to_user_id === currentUser.id ||
+            t.from_user_id === currentUser.email ||
+            t.to_user_id === currentUser.email)
       );
-      set({ transactions: userTxns.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()) });
+
+      set({
+        transactions: [...userTxns, ...completedTxns].sort(
+          (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        ),
+      });
     }
   },
 
@@ -308,20 +353,52 @@ export const useAppStore = create<AppState>((set, get) => ({
     const { currentUser } = get();
     if (!currentUser) throw new Error('Not authenticated');
 
-    const transaction = mockTransactions.find((t) => t.id === transactionId);
-    if (transaction && transaction.status === 'pending') {
-      transaction.status = 'completed';
-      
-      // Deduct from wallet if the current user is the one paying
-      if (transaction.from_user_id === currentUser.id || transaction.from_user_id === currentUser.email) {
-        get().deductFromWallet(transaction.amount);
-      } else if (transaction.to_user_id === currentUser.id || transaction.to_user_id === currentUser.email) {
-        // If current user is the initiator and somehow marking it paid for the other person
-        // we add to wallet since they received it. Actually they always receive it upon settlement.
-        get().addToWallet(transaction.amount);
+    if (transactionId.startsWith('opt_txn_')) {
+      const currentOptTxn = get().transactions.find((t) => t.id === transactionId);
+      if (currentOptTxn) {
+        // Create an offsetting "completed" settlement
+        mockTransactions.push({
+          id: `settlement_${Date.now()}_${Math.random()}`,
+          payment_id: 'settlement',
+          from_user_id: currentOptTxn.from_user_id,
+          to_user_id: currentOptTxn.to_user_id,
+          amount: currentOptTxn.amount,
+          status: 'completed',
+          created_at: new Date().toISOString(),
+        });
+
+        if (
+          currentOptTxn.from_user_id === currentUser.id ||
+          currentOptTxn.from_user_id === currentUser.email
+        ) {
+          get().deductFromWallet(currentOptTxn.amount);
+        } else if (
+          currentOptTxn.to_user_id === currentUser.id ||
+          currentOptTxn.to_user_id === currentUser.email
+        ) {
+          get().addToWallet(currentOptTxn.amount);
+        }
       }
-      
-      await get().fetchTransactions();
+    } else {
+      // Legacy fallback for non-optimized transactions if someone clicks fast
+      const transaction = mockTransactions.find((t) => t.id === transactionId);
+      if (transaction && transaction.status === 'pending') {
+        transaction.status = 'completed';
+
+        if (
+          transaction.from_user_id === currentUser.id ||
+          transaction.from_user_id === currentUser.email
+        ) {
+          get().deductFromWallet(transaction.amount);
+        } else if (
+          transaction.to_user_id === currentUser.id ||
+          transaction.to_user_id === currentUser.email
+        ) {
+          get().addToWallet(transaction.amount);
+        }
+      }
     }
+
+    await get().fetchTransactions();
   },
 }));
